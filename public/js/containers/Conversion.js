@@ -1,76 +1,14 @@
 import React from 'react';
-import { createStore} from 'redux';
-import PropTypes from 'prop-types'
+import { connect } from 'react-redux';
 import axios from 'axios';
 import debounce from 'lodash.debounce';
 
-const defaultState = {
-    originAmount: '0.00'
-};
-
-function amount(state = defaultState, action) {
-    if (action.type === 'CHANGE_ORIGIN_AMOUNT') {
-        // return Object.assign({}, state, {originAmount: action.data});
-        return [...state, 
-            {
-                originAmount: action.data
-            }
-        ]; 
-    }
-
-    return state;
-}
-
-let store = createStore(amount);
-
-store.subscribe(function() {
-    console.log('state', store.getState());
-});
-
-store.dispatch({type: ''});
-store.dispatch({type: 'CHANGE_ORIGIN_AMOUNT', data: '300.65'});
-store.dispatch({type: ''});
-store.dispatch({type: 'CHANGE_ORIGIN_AMOUNT', data: '450.23'});
-
-class FeesTable extends React.Component {
-    render() {
-        var {conversionRate, fee, total, originCurrency, destinationCurrency} = this.props;
-
-        return (
-            <div>
-                <table>
-                    <tbody>
-                        <tr>
-                            <td>Conversion Rate</td>
-                            <td>1 {originCurrency} -> {conversionRate.toFixed(2)} {destinationCurrency}</td>
-                        </tr>
-                        <tr>
-                            <td>Fee</td>
-                            <td>{fee.toFixed(2)} {originCurrency}</td>
-                        </tr>
-                        <tr>
-                            <td className="total-label">Total Cost</td>
-                            <td>{total.toFixed(2)} {originCurrency}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        )
-    }
-}
-
-FeesTable.propTypes = {
-    conversionRate: PropTypes.number.isRequired,
-    originCurrency: PropTypes.string.isRequired,
-    total: PropTypes.number.isRequired,
-    destinationCurrency: PropTypes.string.isRequired
-}
+import FeesTable from '../components/FeesTable';
 
 class Conversion extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            originAmount: '0.00',
             originCurrency: 'USD',
             destinationAmount: '0.00',
             destinationCurrency: 'EUR',
@@ -166,7 +104,7 @@ class Conversion extends React.Component {
         newAmount = newAmount.replace(',','')
 
         // optimistic field updates
-        this.setState({originAmount: newAmount});
+        this.props.dispatch({type: "CHANGE_ORIGIN_AMOUNT", data: newAmount}); 
 
         // get the new dest amount
         this.makeConversionAjaxCall({
@@ -241,7 +179,7 @@ class Conversion extends React.Component {
         var destCurrency = this.state.destinationCurrency;
 
         var payload = {
-            originAmount: data.newValue || this.state.originAmount,
+            originAmount: data.newValue || this.props.originAmount,
             destAmount: data.newValue || this.state.destAmount,
             originCurrency: originCurrency,
             destCurrency: destCurrency,
@@ -275,7 +213,7 @@ class Conversion extends React.Component {
         .catch(failureCallback);
     }
     calcNewTotal() {
-        var newTotal = parseFloat(this.state.originAmount, 10) + parseFloat(this.state.feeAmount, 10);
+        var newTotal = parseFloat(this.props.originAmount, 10) + parseFloat(this.state.feeAmount, 10);
         this.setState({ totalCost: parseFloat(newTotal) });
     }
 
@@ -284,12 +222,11 @@ class Conversion extends React.Component {
             var errorMsg = <div className="errorMsg">{this.state.errorMsg}</div>
         }
 
-
         return (
             <div>
                 {errorMsg}
                 <label>Convert</label>&nbsp;
-                <input className="amount-field" ref={input => this.originAmountInput = input} onChange={this.handleOriginAmountChange} value={this.state.originAmount} />
+                <input className="amount-field" ref={input => this.originAmountInput = input} onChange={this.handleOriginAmountChange} value={this.props.originAmount} />
                 <select value={this.state.originCurrency} onChange={this.handleOriginCurrencyChange}>
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
@@ -316,4 +253,8 @@ class Conversion extends React.Component {
     }
 }
 
-export default Conversion;
+export default connect((state, props) => {
+    return {
+        originAmount: state.originAmount
+    }
+})(Conversion);
